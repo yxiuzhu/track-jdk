@@ -1,19 +1,26 @@
-import type {LogEvent, Options, TrackData} from "./types";
-import {base64Encode, getDistinctId, getTime, getURL, isFunction, log} from "./utils";
-import {addPageViewListener} from "./libs/pageview";
-import {addWebClickListener} from "./libs/webclick";
+import type { LogEvent, Options, TrackData } from "./types";
+import {
+  base64Encode,
+  getDistinctId,
+  getTime,
+  getURL,
+  isFunction,
+  log,
+} from "./utils";
+import { addPageViewListener } from "./libs/pageview";
+import { addWebClickListener } from "./libs/webclick";
 
-const packageJson = require('../package.json');
+const packageJson = require("../package.json");
 
 const REQUIRED_KEYS: (keyof TrackData)[] = [
-  'version',
-  'event',
-  'time',
-  'project',
-  'distinctId',
+  "version",
+  "event",
+  "time",
+  "project",
+  "distinctId",
 ];
 
-const SDK_TYPE = 'web';
+const SDK_TYPE = "web";
 const SDK_VERSION = packageJson.version;
 
 class CjmTracker {
@@ -26,7 +33,7 @@ class CjmTracker {
    */
   baseProperties: Record<string, any> = {};
   options: Options = {
-    reportUrl: '',
+    reportUrl: "",
     debug: false,
     enablePVEvent: false,
     enableWebClickEvent: false,
@@ -39,25 +46,25 @@ class CjmTracker {
    */
   constructor(options: Options, defaultConfig: Partial<TrackData>) {
     if (!!defaultConfig?.version) {
-      throw new Error('version为保留字段，不允许设置默认值');
+      throw new Error("version为保留字段，不允许设置默认值");
     }
     if (!!defaultConfig?.distinctId) {
-      throw new Error('distinctId为保留字段，不允许设置默认值');
+      throw new Error("distinctId为保留字段，不允许设置默认值");
     }
     if (!options?.reportUrl) {
-      throw new Error('reportUrl为必填字段');
+      throw new Error("reportUrl为必填字段");
     }
     if (!defaultConfig?.project) {
-      throw new Error('project为必填字段');
+      throw new Error("project为必填字段");
     }
     this.baseConfig = {
       version: `${SDK_TYPE}_${SDK_VERSION}`,
       distinctId: getDistinctId(),
-      ...defaultConfig
+      ...defaultConfig,
     };
     this.options = { ...this.options, ...options };
     log({
-      level: 'info',
+      level: "info",
       message: `CjmTracker ${SDK_TYPE}_${SDK_VERSION} 实例化成功`,
     });
     this.initEvent();
@@ -65,16 +72,16 @@ class CjmTracker {
 
   initEvent() {
     if (!!this.options.enablePVEvent) {
-      this.track('pageview');
+      this.track("pageview");
       addPageViewListener((lastUrl: string) => {
         if (lastUrl !== location.href) {
-          this.track('pageview');
+          this.track("pageview");
         }
       });
     }
     if (!!this.options.enableWebClickEvent) {
       addWebClickListener((properties) => {
-        this.track('webclick', properties);
+        this.track("webclick", properties);
       });
     }
   }
@@ -117,19 +124,24 @@ class CjmTracker {
   }
 
   /**
-   * 上报数据
+   * 上报数据: 使用图片
    */
   imagePost(stringData: string) {
     if (!this.options?.reportUrl) {
       log({
-        level: 'error',
-        message: '上报地址为空',
+        level: "error",
+        message: "上报地址为空",
       });
       return;
     }
     const image = new Image();
-    image.crossOrigin = 'anonymous';
-    image.src = `${this.options.reportUrl}?data=${encodeURIComponent(stringData)}`;
+    image.width = 1;
+    image.height = 1;
+    // 这个属性决定了图片获取过程中是否开启跨域功能。并且如果设置了 crossOrigin 这个属性，image 请求中将不带 cookie。
+    image.crossOrigin = "anonymous";
+    image.src = `${this.options.reportUrl}?data=${encodeURIComponent(
+      stringData
+    )}`;
   }
 
   /**
@@ -138,40 +150,42 @@ class CjmTracker {
   track(event: string, customProperties?: object, callback?: Function) {
     // 合并参数
     const trackData: Partial<TrackData> = {
-      time: getTime(),          // 时间戳
-      event,                    // 事件名称
-      ...this.baseConfig,       // 基础信息
+      time: getTime(), // 时间戳
+      event, // 事件名称
+      ...this.baseConfig, // 基础信息
       properties: {
         ...this.getDefaultProperties(), // 默认属性
-        ...customProperties,    // 自定义属性
+        ...customProperties, // 自定义属性
       },
     };
     // 校验必填参数
     const { result, lostKeys } = this.checkRequiredParams(trackData);
     if (!result) {
       this.log({
-        message: `track -> 缺少必填参数: ${lostKeys.join(',')}`,
-        level: 'error',
+        message: `track -> 缺少必填参数: ${lostKeys.join(",")}`,
+        level: "error",
       });
       return;
     }
 
-    let encodeDataString = '';
+    let encodeDataString = "";
 
     try {
       const stringifyData = JSON.stringify(trackData);
       this.log({
         message: `track -> raw data:\n${stringifyData}`,
-        level: 'success',
+        level: "success",
       });
       encodeDataString = base64Encode(stringifyData);
       this.log({
-        message: `track -> encode data:\n${encodeURIComponent(encodeDataString)}`,
-        level: 'success',
+        message: `track -> encode data:\n${encodeURIComponent(
+          encodeDataString
+        )}`,
+        level: "success",
       });
     } catch (e) {
-      encodeDataString = '';
-      this.log({ message: 'track -> encode data error', level: 'error' });
+      encodeDataString = "";
+      this.log({ message: "track -> encode data error", level: "error" });
     }
 
     if (encodeDataString) {
@@ -189,4 +203,4 @@ class CjmTracker {
   }
 }
 
-export {CjmTracker};
+export { CjmTracker };
